@@ -15,19 +15,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -pthread -std=c++0x -std=c++14 -fexceptions")
 
-message("Current CPU archtecture: ${CMAKE_SYSTEM_PROCESSOR}")
+message("Current CPU architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)" )
   include(ProcessorCount)
   ProcessorCount(N)
-  message("Processer number:  ${N}")
+  message("Processor number:  ${N}")
   if(N GREATER 4)
     add_definitions(-DMP_EN)
     add_definitions(-DMP_PROC_NUM=3)
-    message("core for MP: 3")
+    message("Core for MP: 3")
   elseif(N GREATER 3)
     add_definitions(-DMP_EN)
     add_definitions(-DMP_PROC_NUM=2)
-    message("core for MP: 2")
+    message("Core for MP: 2")
   else()
     add_definitions(-DMP_PROC_NUM=1)
   endif()
@@ -74,8 +74,8 @@ add_message_files(
 )
 
 generate_messages(
- DEPENDENCIES
- geometry_msgs
+  DEPENDENCIES
+  geometry_msgs
 )
 
 catkin_package(
@@ -84,6 +84,11 @@ catkin_package(
   INCLUDE_DIRS
 )
 
+# Add the fastlio_mapping executable
 add_executable(fastlio_mapping src/laserMapping.cpp include/ikd-Tree/ikd_Tree.cpp src/preprocess.cpp)
 target_link_libraries(fastlio_mapping ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${PYTHON_LIBRARIES})
 target_include_directories(fastlio_mapping PRIVATE ${PYTHON_INCLUDE_DIRS})
+
+# Add the new pose_to_kitti_node executable for outputting poses in KITTI format
+add_executable(pose_to_kitti_node src/pose_to_kitti_format.cpp)
+target_link_libraries(pose_to_kitti_node ${catkin_LIBRARIES})
