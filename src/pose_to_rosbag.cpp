@@ -1,5 +1,4 @@
 #include <ros/ros.h>
-#include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <rosbag/bag.h>
 #include <sys/stat.h>
@@ -10,8 +9,6 @@ bool bag_opened = false;
 ros::Time last_message_time;
 bool received_any_message = false;
 const double TIMEOUT_SECONDS = 5.0;
-
-std::string output_format; //Can be "PoseStamped" or "Odometry"
 
 bool createDirectory(const std::string& path) {
     struct stat info;
@@ -31,21 +28,18 @@ bool createDirectory(const std::string& path) {
 void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     if (!bag_opened) return;
 
-    if (output_format == "PoseStamped") {
-        geometry_msgs::PoseStamped pose_msg;
-        pose_msg.header = msg->header;
-        pose_msg.pose = msg->pose.pose;
+    bag.write("/odometry_output", ros::Time::now(), *msg);
+    ROS_INFO("Odometry message (pipeline output) written to bag file.");
 
-        bag.write("/pose_data", ros::Time::now(), pose_msg);
-        ROS_INFO("PoseStamped message written to bag file.");
-    } 
-    else if (output_format == "Odometry") {
-        bag.write("/odometry_data", ros::Time::now(), *msg);
-        ROS_INFO("Odometry message written to bag file.");
-    } 
-    else {
-        ROS_ERROR("Invalid output format specified. Use either 'PoseStamped' or 'Odometry'.");
-    }
+    last_message_time = ros::Time::now();
+    received_any_message = true;
+}
+
+void groundTruthCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+    if (!bag_opened) return;
+
+    bag.write("/ground_truth_pose", ros::Time::now(), *msg);
+    ROS_INFO("Ground truth pose message written to bag file.");
 
     last_message_time = ros::Time::now();
     received_any_message = true;
@@ -71,14 +65,13 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    nh.param("output_format", output_format, std::string("Odometry"));  // Default to "Odometry"
-    ROS_INFO("Output format set to: %s", output_format.c_str());
-
     last_message_time = ros::Time::now();
 
+    //subscribe to odometry output and ground truth pose topics
     ros::Subscriber odometry_sub = nh.subscribe("/Odometry", 1000, odometryCallback);
+    ros::Subscriber ground_truth_sub = nh.subscribe("/ground_truth", 1000, groundTruthCallback);
 
-    ROS_INFO("pose_to_rosbag_node is running and saving odometry data to bag in %s format...", output_format.c_str());
+    ROS_INFO("pose_to_rosbag_node is running and saving /Odometry and /ground_truth data to bag...");
 
     ros::Rate rate(10);
     while (ros::ok()) {
