@@ -90,5 +90,8 @@ target_link_libraries(fastlio_mapping ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${PYT
 target_include_directories(fastlio_mapping PRIVATE ${PYTHON_INCLUDE_DIRS})
 
 # Add the new pose_to_kitti_node executable for outputting poses in KITTI format
-add_executable(pose_to_kitti_node src/pose_to_kitti_format.cpp)
+add_executable(pose_to_kitti_node src/pose_to_kitti.cpp)
 target_link_libraries(pose_to_kitti_node ${catkin_LIBRARIES})
+
+add_executable(pose_to_rosbag_node src/pose_to_rosbag.cpp)
+target_link_libraries(pose_to_rosbag_node ${catkin_LIBRARIES})
