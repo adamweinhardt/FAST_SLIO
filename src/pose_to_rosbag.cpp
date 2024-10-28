@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <rosbag/bag.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -28,18 +29,18 @@ bool createDirectory(const std::string& path) {
 void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     if (!bag_opened) return;
 
-    bag.write("/odometry_output", ros::Time::now(), *msg);
-    ROS_INFO("Odometry message (pipeline output) written to bag file.");
+    bag.write("/odometry_output", msg->header.stamp, *msg);
+    ROS_INFO("Odometry message written to bag file with timestamp: %f", msg->header.stamp.toSec());
 
     last_message_time = ros::Time::now();
     received_any_message = true;
 }
 
-void groundTruthCallback(const nav_msgs::Odometry::ConstPtr& msg) {
+void groundTruthCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     if (!bag_opened) return;
 
-    bag.write("/ground_truth_pose", ros::Time::now(), *msg);
-    ROS_INFO("Ground truth pose message written to bag file.");
+    bag.write("/pose_ground_truth", msg->header.stamp, *msg);
+    ROS_INFO("Ground truth pose message (PoseStamped) written to bag file with timestamp: %f", msg->header.stamp.toSec());
 
     last_message_time = ros::Time::now();
     received_any_message = true;
@@ -67,11 +68,10 @@ int main(int argc, char** argv) {
 
     last_message_time = ros::Time::now();
 
-    //subscribe to odometry output and ground truth pose topics
     ros::Subscriber odometry_sub = nh.subscribe("/Odometry", 1000, odometryCallback);
-    ros::Subscriber ground_truth_sub = nh.subscribe("/ground_truth", 1000, groundTruthCallback);
+    ros::Subscriber ground_truth_sub = nh.subscribe("/pose_ground_truth", 1000, groundTruthCallback);
 
-    ROS_INFO("pose_to_rosbag_node is running and saving /Odometry and /ground_truth data to bag...");
+    ROS_INFO("pose_to_rosbag_node is running and saving /Odometry and /pose_ground_truth data to bag...");
 
     ros::Rate rate(10);
     while (ros::ok()) {
