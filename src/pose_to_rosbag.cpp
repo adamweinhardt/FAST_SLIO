@@ -4,12 +4,66 @@
 #include <rosbag/bag.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 rosbag::Bag bag;
 bool bag_opened = false;
 ros::Time last_message_time;
 bool received_any_message = false;
 const double TIMEOUT_SECONDS = 5.0;
+
+//calibration transformations
+tf2::Transform T_imu_to_velo;
+tf2::Transform T_velo_to_cam;
+
+void initializeImuToVeloTransform() {
+    double r00 = 0.9999976, r01 = 0.0007553, r02 = -0.0020358;
+    double r10 = -0.0007854, r11 = 0.9998898, r12 = -0.01482298;
+    double r20 = 0.0020244, r21 = 0.01482454, r22 = 0.9998881;
+    tf2::Vector3 translation(-0.8086759, 0.3195559, -0.7997231);
+
+    tf2::Matrix3x3 rotation_matrix(r00, r01, r02, r10, r11, r12, r20, r21, r22);
+    tf2::Quaternion quaternion;
+    rotation_matrix.getRotation(quaternion);
+
+    T_imu_to_velo.setOrigin(translation);
+    T_imu_to_velo.setRotation(quaternion);
+}
+
+void initializeVeloToCamTransform() {
+    double r00 = 0.007027555, r01 = -0.9999753, r02 = 0.00002599616;
+    double r10 = -0.002254837, r11 = -0.00004184312, r12 = -0.9999975;
+    double r20 = 0.9999728, r21 = 0.007027479, r22 = -0.002255075;
+    tf2::Vector3 translation(-0.007137748, -0.07482656, -0.3336324);
+
+    tf2::Matrix3x3 rotation_matrix(r00, r01, r02, r10, r11, r12, r20, r21, r22);
+    tf2::Quaternion quaternion;
+    rotation_matrix.getRotation(quaternion);
+
+    T_velo_to_cam.setOrigin(translation);
+    T_velo_to_cam.setRotation(quaternion);
+}
+
+// Convert IMU odometry to world frame (Camera 0)
+nav_msgs::Odometry convertImuToWorldFrame(const nav_msgs::Odometry& imu_odom) {
+    nav_msgs::Odometry world_odom = imu_odom;
+
+    // Extract pose from IMU odometry
+    tf2::Transform imu_pose;
+    tf2::fromMsg(imu_odom.pose.pose, imu_pose);
+
+    // Apply transformations: IMU -> Velodyne -> Camera 0 (World)
+    tf2::Transform world_pose = T_velo_to_cam * T_imu_to_velo * imu_pose;
+
+    // Convert to geometry_msgs::Pose and assign to the output message
+    geometry_msgs::Pose world_pose_msg;
+    tf2::toMsg(world_pose, world_pose_msg);
+
+    world_odom.pose.pose = world_pose_msg;
+    return world_odom;
+}
+
 
 bool createDirectory(const std::string& path) {
     struct stat info;
@@ -29,8 +83,11 @@ bool createDirectory(const std::string& path) {
 void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     if (!bag_opened) return;
 
-    bag.write("/odometry_output", msg->header.stamp, *msg);
-    ROS_INFO("Odometry message written to bag file with timestamp: %f", msg->header.stamp.toSec());
+    nav_msgs::Odometry world_odom = convertImuToWorldFrame(*msg);
+
+    bag.write("/odometry_output", msg->header.stamp, world_odom);
+    //bag.write("/odometry_output", msg->header.stamp, *msg);
+    ROS_INFO("Converted odometry message written to bag file with timestamp: %f", msg->header.stamp.toSec());
 
     last_message_time = ros::Time::now();
     received_any_message = true;
@@ -49,6 +106,9 @@ void groundTruthCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
 int main(int argc, char** argv) {
     ros::init(argc, argv, "pose_to_rosbag_node");
     ros::NodeHandle nh("~");
+
+    initializeImuToVeloTransform();
+    initializeVeloToCamTransform();
 
     std::string bag_directory = "/fast_lio_ws/src/FAST_LIO/pose";
     if (!createDirectory(bag_directory)) {
