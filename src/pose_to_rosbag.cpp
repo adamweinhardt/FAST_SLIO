@@ -56,10 +56,10 @@ nav_msgs::Odometry convertImuToWorldFrame(const nav_msgs::Odometry& imu_odom) {
 
     //for the base transformation
     tf2::Transform T_cam_to_imu = T_imu_to_cam.inverse();
+
     // Apply transformations: IMU -> Velodyne -> Camera 0 (World)
     tf2::Transform world_pose = T_imu_to_cam * imu_pose * T_cam_to_imu;
 
-    // Convert to geometry_msgs::Pose and assign to the output message
     geometry_msgs::Pose world_pose_msg;
     tf2::toMsg(world_pose, world_pose_msg);
 
@@ -89,7 +89,9 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     nav_msgs::Odometry world_odom = convertImuToWorldFrame(*msg);
 
     bag.write("/odometry_output", msg->header.stamp, world_odom);
-    //bag.write("/odometry_output", msg->header.stamp, *msg);
+
+    //bag.write("/odometry_output", msg->header.stamp, *msg); // for no transformation
+
     ROS_INFO("Converted odometry message written to bag file with timestamp: %f", msg->header.stamp.toSec());
 
     last_message_time = ros::Time::now();
