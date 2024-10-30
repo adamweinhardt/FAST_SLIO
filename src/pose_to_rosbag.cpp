@@ -49,12 +49,15 @@ void initializeVeloToCamTransform() {
 nav_msgs::Odometry convertImuToWorldFrame(const nav_msgs::Odometry& imu_odom) {
     nav_msgs::Odometry world_odom = imu_odom;
 
-    // Extract pose from IMU odometry
     tf2::Transform imu_pose;
     tf2::fromMsg(imu_odom.pose.pose, imu_pose);
 
+    tf2::Transform T_imu_to_cam = T_velo_to_cam * T_imu_to_velo;
+
+    //for the base transformation
+    tf2::Transform T_cam_to_imu = T_imu_to_cam.inverse();
     // Apply transformations: IMU -> Velodyne -> Camera 0 (World)
-    tf2::Transform world_pose = T_velo_to_cam * T_imu_to_velo * imu_pose;
+    tf2::Transform world_pose = T_imu_to_cam * imu_pose * T_cam_to_imu;
 
     // Convert to geometry_msgs::Pose and assign to the output message
     geometry_msgs::Pose world_pose_msg;
