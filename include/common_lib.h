@@ -10,6 +10,7 @@
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
 #include <eigen_conversions/eigen_msg.h>
+#include "../src/preprocess.h"
 
 using namespace std;
 using namespace Eigen;
@@ -34,7 +35,7 @@ using namespace Eigen;
 #define DEBUG_FILE_DIR(name)     (string(string(ROOT_DIR) + "Log/"+ name))
 
 typedef fast_lio::Pose6D Pose6D;
-typedef pcl::PointXYZINormal PointType;
+typedef PointXYZNRGBIL PointType;
 typedef pcl::PointCloud<PointType> PointCloudXYZI;
 typedef vector<PointType, Eigen::aligned_allocator<PointType>>  PointVector;
 typedef Vector3d V3D;
