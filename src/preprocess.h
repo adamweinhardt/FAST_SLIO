@@ -1,54 +1,17 @@
 #ifndef PREPROCESS_H
 #define PREPROCESS_H
 
+
 #include <ros/ros.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <livox_ros_driver/CustomMsg.h>
-#include <pcl/point_types.h>
 
 using namespace std;
 
 #define IS_VALID(a)  ((abs(a)>1e8) ? true : false)
 
-// Define the custom point type with RGB and label fields
-struct EIGEN_ALIGN16 PointXYZNRGBIL {
-    PCL_ADD_POINT4D;  // adds x, y, z, and padding w
-
-    union {
-        struct {
-            float normal_x;
-            float normal_y;
-            float normal_z;
-            float curvature;
-        };
-        float data_n[4];
-    };
-
-    union {
-        struct {
-            PCL_ADD_UNION_RGB    // adds packed RGB as a float
-            float intensity;     // Intensity
-            std::uint16_t label;      // Semantic label
-            float padding;       // Extra padding for 4-float alignment
-        };
-        float data_c[4];
-    };
-
-    PCL_ADD_EIGEN_MAPS_NORMAL4D
-    PCL_ADD_EIGEN_MAPS_RGB
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-};
-
-// Register the custom point type with PCL
-POINT_CLOUD_REGISTER_POINT_STRUCT(
-    PointXYZNRGBIL,
-    (float, x, x)(float, y, y)(float, z, z)
-    (float, normal_x, normal_x)(float, normal_y, normal_y)(float, normal_z, normal_z)(float, curvature, curvature)
-    (float, rgb, rgb)(float, intensity, intensity)(std::uint16_t, label, label)
-)
-
-typedef PointXYZNRGBIL PointType;
+typedef pcl::PointXYZINormal PointType;
 typedef pcl::PointCloud<PointType> PointCloudXYZI;
 
 enum LID_TYPE{AVIA = 1, VELO16, OUST64, MARSIM}; //{1, 2, 3}

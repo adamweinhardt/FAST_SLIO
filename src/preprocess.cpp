@@ -121,11 +121,6 @@ void Preprocess::avia_handler(const livox_ros_driver::CustomMsg::ConstPtr &msg)
         pl_full[i].intensity = msg->points[i].reflectivity;
         pl_full[i].curvature = msg->points[i].offset_time / float(1000000); //use curvature as time of each laser points
 
-        //semantics:
-        //pl_full[i].rgb = msg->points[i].rbg;
-        //pl_full[i].label= msg->points[i].label;
-
-
         bool is_new = false;
         if((abs(pl_full[i].x - pl_full[i-1].x) > 1e-7) 
             || (abs(pl_full[i].y - pl_full[i-1].y) > 1e-7)
@@ -177,10 +172,6 @@ void Preprocess::avia_handler(const livox_ros_driver::CustomMsg::ConstPtr &msg)
           pl_full[i].z = msg->points[i].z;
           pl_full[i].intensity = msg->points[i].reflectivity;
           pl_full[i].curvature = msg->points[i].offset_time / float(1000000); // use curvature as time of each laser points, curvature unit: ms
-
-          //semantics:
-          //pl_full[i].rgb = msg->points[i].rbg;
-          //pl_full[i].label= msg->points[i].label;
 
           if(((abs(pl_full[i].x - pl_full[i-1].x) > 1e-7) 
               || (abs(pl_full[i].y - pl_full[i-1].y) > 1e-7)
@@ -282,9 +273,6 @@ void Preprocess::oust64_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
       added_pt.normal_y = 0;
       added_pt.normal_z = 0;
       added_pt.curvature = pl_orig.points[i].t * time_unit_scale; // curvature unit: ms
-      //semantics:
-      //added_pt.rbg = pl_orig.points[i].rgb;
-      //added_pt.label = pl_orig.points[i].label;
 
       pl_surf.points.push_back(added_pt);
     }
@@ -354,9 +342,6 @@ void Preprocess::velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
         added_pt.z = pl_orig.points[i].z;
         added_pt.intensity = pl_orig.points[i].intensity;
         added_pt.curvature = pl_orig.points[i].time * time_unit_scale; // units: ms
-        //semantics:
-        //added_pt.rgb = pl_orig.points[i].rgb;
-        //added_pt.label = pl_orig.points[i].label;
 
         if (!given_offset_time)
         {
@@ -426,9 +411,6 @@ void Preprocess::velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
         added_pt.z = pl_orig.points[i].z;
         added_pt.intensity = pl_orig.points[i].intensity;
         added_pt.curvature = pl_orig.points[i].time * time_unit_scale;  // curvature unit: ms // cout<<added_pt.curvature<<endl;
-        //semantics:
-        //added_pt.rgb = pl_orig.points[i].rgb;
-        //added_pt.label = pl_orig.points[i].label;
 
         if (!given_offset_time)
         {
@@ -494,9 +476,6 @@ void Preprocess::sim_handler(const sensor_msgs::PointCloud2::ConstPtr &msg) {
         added_pt.normal_y = 0;
         added_pt.normal_z = 0;
         added_pt.curvature = 0.0;
-        //semantics:
-        //added_pt.rbg = pl_orig.points[i].rgb;
-        //added_pt.label = pl_orig.points[i].label;
         pl_surf.points.push_back(added_pt);
     }
 }
@@ -781,9 +760,6 @@ void Preprocess::give_feature(pcl::PointCloud<PointType> &pl, vector<orgtype> &t
         ap.z = pl[j].z;
         ap.intensity = pl[j].intensity;
         ap.curvature = pl[j].curvature;
-        //semantics:
-        //ap.rgb = pl[j].rgb;
-        //ap.label = pl[j].label;
         pl_surf.push_back(ap);
 
         last_surface = -1;
@@ -805,18 +781,12 @@ void Preprocess::give_feature(pcl::PointCloud<PointType> &pl, vector<orgtype> &t
           ap.z += pl[k].z;
           ap.intensity += pl[k].intensity;
           ap.curvature += pl[k].curvature;
-          //semantics:
-          //ap.rgb += pl[k].rgb;
-          //ap.label += pl[k].label;
         }
         ap.x /= (j-last_surface);
         ap.y /= (j-last_surface);
         ap.z /= (j-last_surface);
         ap.intensity /= (j-last_surface);
         ap.curvature /= (j-last_surface);
-        //semantics:
-        //ap.rgb /= (j-last_surface);
-        //ap.label /= (j-last_surface);
         pl_surf.push_back(ap);
       }
       last_surface = -1;
