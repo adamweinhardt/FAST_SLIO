@@ -11,6 +11,8 @@
 #include <tf/transform_broadcaster.h>
 #include <eigen_conversions/eigen_msg.h>
 
+#include <cstdint>
+
 using namespace std;
 using namespace Eigen;
 
@@ -34,7 +36,36 @@ using namespace Eigen;
 #define DEBUG_FILE_DIR(name)     (string(string(ROOT_DIR) + "Log/"+ name))
 
 typedef fast_lio::Pose6D Pose6D;
-typedef pcl::PointXYZINormal PointType;
+
+// custom point class which includes the rgb and label atributes of the pointcloud
+struct EIGEN_ALIGN16 PointXYZNRGBL {
+  PCL_ADD_POINT4D;
+  
+  union {
+    struct {
+      float normal_x;
+      float normal_y;
+      float normal_z;
+      float curvature;
+    };
+    float data_n[4];
+  };
+
+  union {
+    struct {
+      PCL_ADD_UNION_RGB    // add rbg (based on the labels)
+      float intensity;
+      std::uint16_t label; // add labels
+    };
+    float data_c[4];
+  };
+  
+  PCL_ADD_EIGEN_MAPS_NORMAL4D
+  PCL_ADD_EIGEN_MAPS_RGB
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+};
+
+typedef PointXYZNRGBL PointType;
 typedef pcl::PointCloud<PointType> PointCloudXYZI;
 typedef vector<PointType, Eigen::aligned_allocator<PointType>>  PointVector;
 typedef Vector3d V3D;
@@ -42,15 +73,32 @@ typedef Matrix3d M3D;
 typedef Vector3f V3F;
 typedef Matrix3f M3F;
 
+//register the custom point structure with PCL
+POINT_CLOUD_REGISTER_POINT_STRUCT(
+    PointXYZNRGBL,
+    (float, x, x)
+    (float, y, y)
+    (float, z, z)
+    (float, normal_x, normal_x)
+    (float, normal_y, normal_y)
+    (float, normal_z, normal_z)
+    (float, curvature, curvature)
+    (float, rgb, rgb)
+    (float, intensity, intensity)
+    (std::uint16_t, label, label)  
+)
+
 #define MD(a,b)  Matrix<double, (a), (b)>
 #define VD(a)    Matrix<double, (a), 1>
 #define MF(a,b)  Matrix<float, (a), (b)>
 #define VF(a)    Matrix<float, (a), 1>
 
-M3D Eye3d(M3D::Identity());
-M3F Eye3f(M3F::Identity());
-V3D Zero3d(0, 0, 0);
-V3F Zero3f(0, 0, 0);
+extern M3D Eye3d;
+extern M3F Eye3f;
+extern V3D Zero3d;
+extern V3F Zero3f;
+
+float calc_dist(PointType p1, PointType p2);
 
 struct MeasureGroup     // Lidar data and imu dates for the curent process
 {
