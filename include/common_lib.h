@@ -12,6 +12,8 @@
 #include <eigen_conversions/eigen_msg.h>
 
 #include <cstdint>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/filter.h>
 
 using namespace std;
 using namespace Eigen;
@@ -65,15 +67,6 @@ struct EIGEN_ALIGN16 PointXYZNRGBL {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-typedef PointXYZNRGBL PointType;
-typedef pcl::PointCloud<PointType> PointCloudXYZI;
-typedef vector<PointType, Eigen::aligned_allocator<PointType>>  PointVector;
-typedef Vector3d V3D;
-typedef Matrix3d M3D;
-typedef Vector3f V3F;
-typedef Matrix3f M3F;
-
-//register the custom point structure with PCL
 POINT_CLOUD_REGISTER_POINT_STRUCT(
     PointXYZNRGBL,
     (float, x, x)
@@ -85,20 +78,26 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
     (float, curvature, curvature)
     (float, rgb, rgb)
     (float, intensity, intensity)
-    (std::uint16_t, label, label)  
+    (std::uint16_t, label, label)
 )
+
+typedef PointXYZNRGBL PointType;
+typedef pcl::PointCloud<PointType> PointCloudXYZI;
+typedef vector<PointType, Eigen::aligned_allocator<PointType>>  PointVector;
+typedef Vector3d V3D;
+typedef Matrix3d M3D;
+typedef Vector3f V3F;
+typedef Matrix3f M3F;
 
 #define MD(a,b)  Matrix<double, (a), (b)>
 #define VD(a)    Matrix<double, (a), 1>
 #define MF(a,b)  Matrix<float, (a), (b)>
 #define VF(a)    Matrix<float, (a), 1>
 
-extern M3D Eye3d;
-extern M3F Eye3f;
-extern V3D Zero3d;
-extern V3F Zero3f;
-
-float calc_dist(PointType p1, PointType p2);
+const M3D Eye3d = M3D::Identity();
+const M3F Eye3f = M3F::Identity();
+const V3D Zero3d(0, 0, 0);
+const V3F Zero3f(0, 0, 0);
 
 struct MeasureGroup     // Lidar data and imu dates for the curent process
 {
@@ -265,7 +264,7 @@ bool esti_normvector(Matrix<T, 3, 1> &normvec, const PointVector &point, const T
     return true;
 }
 
-float calc_dist(PointType p1, PointType p2){
+inline float calc_dist(PointType p1, PointType p2){
     float d = (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y) + (p1.z - p2.z) * (p1.z - p2.z);
     return d;
 }
