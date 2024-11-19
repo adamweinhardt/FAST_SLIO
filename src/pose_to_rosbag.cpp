@@ -90,21 +90,21 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     received_any_message = true;
 }
 
-void groundTruthPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+void groundTruthSemanticPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     if (!bag_opened) return;
 
-    bag.write("/ground_truth_pose", msg->header.stamp, *msg);
-    ROS_INFO("Ground truth pose message (PoseStamped) written to bag file from /ground_truth_pose with timestamp: %f", msg->header.stamp.toSec());
+    bag.write("/semantic_ground_truth", msg->header.stamp, *msg);
+    ROS_INFO("Ground truth pose message (PoseStamped) written to bag file from /semantic_ground_truth with timestamp: %f", msg->header.stamp.toSec());
 
     last_message_time = ros::Time::now();
     received_any_message = true;
 }
 
-void groundTruth05Callback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+void groundTruthKittiCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     if (!bag_opened) return;
 
-    bag.write("/ground_truth_05", msg->header.stamp, *msg);
-    ROS_INFO("Ground truth pose message (PoseStamped) written to bag file from /ground_truth_05 with timestamp: %f", msg->header.stamp.toSec());
+    bag.write("/kitti_ground_truth", msg->header.stamp, *msg);
+    ROS_INFO("Ground truth pose message (PoseStamped) written to bag file from /kitti_ground_truth with timestamp: %f", msg->header.stamp.toSec());
 
     last_message_time = ros::Time::now();
     received_any_message = true;
@@ -137,8 +137,8 @@ int main(int argc, char** argv) {
 
     // Subscriptions for odometry and ground truth
     ros::Subscriber odometry_sub = nh.subscribe("/Odometry", 1000, odometryCallback);
-    ros::Subscriber ground_truth_sub1 = nh.subscribe("/ground_truth_pose", 1000, groundTruthPoseCallback);
-    ros::Subscriber ground_truth_sub2 = nh.subscribe("/ground_truth_05", 1000, groundTruth05Callback);
+    ros::Subscriber ground_truth_sub_kitti = nh.subscribe("/kitti_ground_truth", 1000, groundTruthKittiCallback);
+    ros::Subscriber ground_truth_sub_semantic = nh.subscribe("/semantic_ground_truth", 1000, groundTruthSemanticPoseCallback);
 
     ROS_INFO("pose_to_rosbag_node is running and saving /Odometry, /ground_truth_pose, and /ground_truth_05 data to bag...");
 
