@@ -13,7 +13,7 @@ ros::Time last_message_time;
 bool received_any_message = false;
 const double TIMEOUT_SECONDS = 5.0;
 
-//calibration transformations
+// Calibration transformations
 tf2::Transform T_imu_to_velo;
 tf2::Transform T_velo_to_cam;
 
@@ -53,13 +53,8 @@ nav_msgs::Odometry convertImuToWorldFrame(const nav_msgs::Odometry& imu_odom) {
     tf2::fromMsg(imu_odom.pose.pose, imu_pose);
 
     //tf2::Transform T_imu_to_cam = T_velo_to_cam * T_imu_to_velo;
-
-    //for the base transformation
-    //tf2::Transform T_cam_to_imu = T_imu_to_cam.inverse();
-
     tf2::Transform T_velo_to_imu = T_imu_to_velo.inverse();
 
-    // Apply transformations: IMU -> Velodyne -> Camera 0 (World)
     tf2::Transform world_pose = T_imu_to_velo * imu_pose * T_velo_to_imu;
 
     geometry_msgs::Pose world_pose_msg;
@@ -68,7 +63,6 @@ nav_msgs::Odometry convertImuToWorldFrame(const nav_msgs::Odometry& imu_odom) {
     world_odom.pose.pose = world_pose_msg;
     return world_odom;
 }
-
 
 bool createDirectory(const std::string& path) {
     struct stat info;
@@ -89,22 +83,28 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     if (!bag_opened) return;
 
     nav_msgs::Odometry world_odom = convertImuToWorldFrame(*msg);
-
     bag.write("/odometry_output", msg->header.stamp, world_odom);
-
-    //bag.write("/odometry_output", msg->header.stamp, *msg); // for no transformation
-
     ROS_INFO("Converted odometry message written to bag file with timestamp: %f", msg->header.stamp.toSec());
 
     last_message_time = ros::Time::now();
     received_any_message = true;
 }
 
-void groundTruthCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+void groundTruthSemanticPoseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     if (!bag_opened) return;
 
-    bag.write("/pose_ground_truth", msg->header.stamp, *msg);
-    ROS_INFO("Ground truth pose message (PoseStamped) written to bag file with timestamp: %f", msg->header.stamp.toSec());
+    bag.write("/semantic_ground_truth", msg->header.stamp, *msg);
+    ROS_INFO("Ground truth pose message (PoseStamped) written to bag file from /semantic_ground_truth with timestamp: %f", msg->header.stamp.toSec());
+
+    last_message_time = ros::Time::now();
+    received_any_message = true;
+}
+
+void groundTruthKittiCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+    if (!bag_opened) return;
+
+    bag.write("/kitti_ground_truth", msg->header.stamp, *msg);
+    ROS_INFO("Ground truth pose message (PoseStamped) written to bag file from /kitti_ground_truth with timestamp: %f", msg->header.stamp.toSec());
 
     last_message_time = ros::Time::now();
     received_any_message = true;
@@ -135,10 +135,12 @@ int main(int argc, char** argv) {
 
     last_message_time = ros::Time::now();
 
+    // Subscriptions for odometry and ground truth
     ros::Subscriber odometry_sub = nh.subscribe("/Odometry", 1000, odometryCallback);
-    ros::Subscriber ground_truth_sub = nh.subscribe("/pose_ground_truth", 1000, groundTruthCallback);
+    ros::Subscriber ground_truth_sub_kitti = nh.subscribe("/kitti_ground_truth", 1000, groundTruthKittiCallback);
+    ros::Subscriber ground_truth_sub_semantic = nh.subscribe("/semantic_ground_truth", 1000, groundTruthSemanticPoseCallback);
 
-    ROS_INFO("pose_to_rosbag_node is running and saving /Odometry and /pose_ground_truth data to bag...");
+    ROS_INFO("pose_to_rosbag_node is running and saving /Odometry, /ground_truth_pose, and /ground_truth_05 data to bag...");
 
     ros::Rate rate(10);
     while (ros::ok()) {
