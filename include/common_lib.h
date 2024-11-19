@@ -11,9 +11,7 @@
 #include <tf/transform_broadcaster.h>
 #include <eigen_conversions/eigen_msg.h>
 
-#include <cstdint>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/filters/filter.h>
+#include "custom_point_types.h"
 
 using namespace std;
 using namespace Eigen;
@@ -38,49 +36,6 @@ using namespace Eigen;
 #define DEBUG_FILE_DIR(name)     (string(string(ROOT_DIR) + "Log/"+ name))
 
 typedef fast_lio::Pose6D Pose6D;
-
-// custom point class which includes the rgb and label atributes of the pointcloud
-struct EIGEN_ALIGN16 PointXYZNRGBL {
-  PCL_ADD_POINT4D;
-  
-  union {
-    struct {
-      float normal_x;
-      float normal_y;
-      float normal_z;
-      float curvature;
-    };
-    float data_n[4];
-  };
-
-  union {
-    struct {
-      PCL_ADD_UNION_RGB    // add rbg (based on the labels)
-      float intensity;
-      std::uint16_t label; // add labels
-    };
-    float data_c[4];
-  };
-  
-  PCL_ADD_EIGEN_MAPS_NORMAL4D
-  PCL_ADD_EIGEN_MAPS_RGB
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-};
-
-POINT_CLOUD_REGISTER_POINT_STRUCT(
-    PointXYZNRGBL,
-    (float, x, x)
-    (float, y, y)
-    (float, z, z)
-    (float, normal_x, normal_x)
-    (float, normal_y, normal_y)
-    (float, normal_z, normal_z)
-    (float, curvature, curvature)
-    (float, rgb, rgb)
-    (float, intensity, intensity)
-    (std::uint16_t, label, label)
-)
-
 typedef PointXYZNRGBL PointType;
 typedef pcl::PointCloud<PointType> PointCloudXYZI;
 typedef vector<PointType, Eigen::aligned_allocator<PointType>>  PointVector;
