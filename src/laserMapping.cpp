@@ -60,6 +60,9 @@
 #include "preprocess.h"
 #include <ikd-Tree/ikd_Tree.h>
 
+#include <unordered_set>
+
+
 #define INIT_TIME           (0.1)
 #define LASER_POINT_COV     (0.001)
 #define MAXN                (720000)
@@ -642,6 +645,10 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
     corr_normvect->clear(); 
     total_residual = 0.0; 
 
+    //--------------------------------------------------
+    // excluding the following semantic labels:
+    std::unordered_set<uint16_t> excluded_labels = {252, 253, 254, 255, 256, 257, 258, 259};
+
     /** closest surface search and residual computation **/
     #ifdef MP_EN
         omp_set_num_threads(MP_PROC_NUM);
@@ -668,6 +675,14 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         {
             /** Find the closest surfaces in the map **/
             ikdtree.Nearest_Search(point_world, NUM_MATCH_POINTS, points_near, pointSearchSqDis);
+
+            // exclude the points by their label
+            points_near.erase(std::remove_if(points_near.begin(), 
+                                             points_near.end(),
+                                             [&](const PointType &p) { return excluded_labels.count(p.label) > 0; }
+                                             ),
+                              points_near.end());
+
             point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : pointSearchSqDis[NUM_MATCH_POINTS - 1] > 5 ? false : true;
         }
 

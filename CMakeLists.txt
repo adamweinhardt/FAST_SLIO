@@ -96,3 +96,12 @@ target_link_libraries(fastlio_mapping
   custom_point_types
 )
 target_include_directories(fastlio_mapping PRIVATE ${PYTHON_INCLUDE_DIRS})
+
+add_executable(pose_to_rosbag_node
+  src/pose_to_rosbag.cpp
+)
+target_link_libraries(pose_to_rosbag_node
+  ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+)
+add_dependencies(pose_to_rosbag_node ${catkin_EXPORTED_TARGETS})
