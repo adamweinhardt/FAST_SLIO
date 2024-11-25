@@ -140,7 +140,7 @@ int main(int argc, char** argv) {
     ros::Subscriber ground_truth_sub_kitti = nh.subscribe("/kitti_ground_truth", 1000, groundTruthKittiCallback);
     ros::Subscriber ground_truth_sub_semantic = nh.subscribe("/semantic_ground_truth", 1000, groundTruthSemanticPoseCallback);
 
-    ROS_INFO("pose_to_rosbag_node is running and saving /Odometry, /ground_truth_pose, and /ground_truth_05 data to bag...");
+    ROS_INFO("pose_to_rosbag_node is running and saving /Odometry, /kitti_ground_truth, and /semantic_ground_truth data to bag...");
 
     ros::Rate rate(10);
     while (ros::ok()) {
