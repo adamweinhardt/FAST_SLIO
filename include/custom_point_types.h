@@ -25,7 +25,9 @@ struct EIGEN_ALIGN16 PointXYZNRGBL {
     struct {
       PCL_ADD_UNION_RGB;  // Macro to add RGB union
       float intensity;
-      std::uint16_t label;
+      std::uint16_t label; // Label field
+      float time;          // Add time field
+      std::uint16_t ring;  // Add ring field
     };
     float data_c[4];
   };
@@ -46,7 +48,9 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
     (float, curvature, curvature)
     (float, rgb, rgb)
     (float, intensity, intensity)
-    (std::uint16_t, label, label)
+    (std::uint16_t, label, label) // Ensure the label field is registered
+    (float, time, time)           // Register the time field
+    (std::uint16_t, ring, ring)   // Register the ring field
 )
 
 #endif // CUSTOM_POINT_TYPES_H

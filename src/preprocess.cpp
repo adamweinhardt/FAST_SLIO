@@ -287,7 +287,8 @@ void Preprocess::velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
     pl_corn.clear();
     pl_full.clear();
 
-    pcl::PointCloud<velodyne_ros::Point> pl_orig;
+    //pcl::PointCloud<velodyne_ros::Point> pl_orig;
+    pcl::PointCloud<PointType> pl_orig;
     pcl::fromROSMsg(*msg, pl_orig);
     int plsize = pl_orig.points.size();
     if (plsize == 0) return;
@@ -342,6 +343,9 @@ void Preprocess::velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
         added_pt.z = pl_orig.points[i].z;
         added_pt.intensity = pl_orig.points[i].intensity;
         added_pt.curvature = pl_orig.points[i].time * time_unit_scale; // units: ms
+
+        added_pt.rgb = pl_orig.points[i].rgb;
+        added_pt.label = pl_orig.points[i].label;
 
         if (!given_offset_time)
         {
@@ -411,6 +415,9 @@ void Preprocess::velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
         added_pt.z = pl_orig.points[i].z;
         added_pt.intensity = pl_orig.points[i].intensity;
         added_pt.curvature = pl_orig.points[i].time * time_unit_scale;  // curvature unit: ms // cout<<added_pt.curvature<<endl;
+
+        added_pt.rgb = pl_orig.points[i].rgb;
+        added_pt.label = pl_orig.points[i].label;
 
         if (!given_offset_time)
         {

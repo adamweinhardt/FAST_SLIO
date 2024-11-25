@@ -6,14 +6,16 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <livox_ros_driver/CustomMsg.h>
-#include "common_lib.h"
+
+#include "custom_point_types.h"
 
 using namespace std;
 
 #define IS_VALID(a)  ((abs(a)>1e8) ? true : false)
 
-//typedef PointXYZNRGBL PointType;
-//typedef pcl::PointCloud<PointType> PointCloudXYZI;
+//typedef pcl::PointXYZINormal PointType;
+typedef PointXYZNRGBL PointType;
+typedef pcl::PointCloud<PointType> PointCloudXYZI;
 
 enum LID_TYPE{AVIA = 1, VELO16, OUST64, MARSIM}; //{1, 2, 3}
 enum TIME_UNIT{SEC = 0, MS = 1, US = 2, NS = 3};
