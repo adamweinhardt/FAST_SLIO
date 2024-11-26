@@ -287,8 +287,8 @@ void Preprocess::velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
     pl_corn.clear();
     pl_full.clear();
 
-    //pcl::PointCloud<velodyne_ros::Point> pl_orig;
-    pcl::PointCloud<PointType> pl_orig;
+    pcl::PointCloud<velodyne_ros::Point> pl_orig;
+    //pcl::PointCloud<PointType> pl_orig;
     pcl::fromROSMsg(*msg, pl_orig);
     int plsize = pl_orig.points.size();
     if (plsize == 0) return;

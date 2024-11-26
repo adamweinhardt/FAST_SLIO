@@ -41,12 +41,15 @@ struct orgtype
   }
 };
 
+// updated with label and rgb fields
 namespace velodyne_ros {
   struct EIGEN_ALIGN16 Point {
       PCL_ADD_POINT4D;
       float intensity;
       float time;
       uint16_t ring;
+      uint32_t rgb;
+      uint16_t label;
       EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   };
 }  // namespace velodyne_ros
@@ -57,6 +60,8 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(velodyne_ros::Point,
     (float, intensity, intensity)
     (float, time, time)
     (uint16_t, ring, ring)
+    (uint32_t, rgb, rgb)
+    (uint16_t, label, label)
 )
 
 namespace ouster_ros {

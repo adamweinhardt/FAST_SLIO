@@ -678,10 +678,10 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
 
             // exclude the points by their label
             points_near.erase(std::remove_if(points_near.begin(), 
-                                             points_near.end(),
-                                             [&](const PointType &p) { return excluded_labels.count(p.label) > 0; }
-                                             ),
-                              points_near.end());
+                                            points_near.end(),
+                                           [&](const PointType &p) { return excluded_labels.count(p.label) > 0; }
+                                           ),
+                            points_near.end());
 
             point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : pointSearchSqDis[NUM_MATCH_POINTS - 1] > 5 ? false : true;
         }
