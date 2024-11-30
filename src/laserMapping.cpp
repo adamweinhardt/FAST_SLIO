@@ -61,7 +61,8 @@
 #include <ikd-Tree/ikd_Tree.h>
 
 #include <unordered_set>
-
+#include <atomic>
+#include <map> 
 
 #define INIT_TIME           (0.1)
 #define LASER_POINT_COV     (0.001)
@@ -98,6 +99,9 @@ bool   point_selected_surf[100000] = {0};
 bool   lidar_pushed, flg_first_scan = true, flg_exit = false, flg_EKF_inited;
 bool   scan_pub_en = false, dense_pub_en = false, scan_body_pub_en = false;
 int lidar_type;
+
+int removed_points_counter = 0;
+std::map<uint16_t, int> global_label_count; 
 
 vector<vector<int>>  pointSearchInd_surf; 
 vector<BoxPointType> cub_needrm;
@@ -676,12 +680,36 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
             /** Find the closest surfaces in the map **/
             ikdtree.Nearest_Search(point_world, NUM_MATCH_POINTS, points_near, pointSearchSqDis);
 
-            // exclude the points by their label
-            points_near.erase(std::remove_if(points_near.begin(), 
-                                            points_near.end(),
-                                           [&](const PointType &p) { return excluded_labels.count(p.label) > 0; }
-                                           ),
-                            points_near.end());
+            // Update the global label count map
+            for (const auto &point : points_near) {
+                global_label_count[point.label]++;
+            }
+
+            // Display the current global label counts
+            for (const auto &pair : global_label_count) {
+                uint16_t label = pair.first;
+                int count = pair.second;
+                ROS_INFO("Label %d: %d occurrences", label, count);
+            }
+
+            // Reset the removed points counter for this step
+            int removed_in_this_step = 0;
+
+            // Exclude the points by their label
+            points_near.erase(std::remove_if(points_near.begin(), points_near.end(),
+                [&](const PointType &p) {
+                    if (excluded_labels.count(p.label) > 0) {
+                        removed_points_counter++;
+                        removed_in_this_step++;
+                        return true;
+                    }
+                    return false;
+                }),
+                points_near.end());
+
+            // Log the number of removed points in this step
+            ROS_INFO("Removed %d points in this step due to excluded labels", removed_in_this_step);
+            ROS_INFO("Total removed points so far: %d", removed_points_counter);
 
             point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : pointSearchSqDis[NUM_MATCH_POINTS - 1] > 5 ? false : true;
         }
@@ -766,6 +794,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         ekfom_data.h(i) = -norm_p.intensity;
     }
     solve_time += omp_get_wtime() - solve_start_;
+    ROS_INFO("Total removed points during plane fitting: %d", removed_points_counter);
 }
 
 int main(int argc, char** argv)
