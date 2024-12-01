@@ -61,6 +61,7 @@
 #include <ikd-Tree/ikd_Tree.h>
 
 #include <unordered_set>
+#include <unordered_map>
 #include <atomic>
 #include <map> 
 
@@ -101,7 +102,7 @@ bool   scan_pub_en = false, dense_pub_en = false, scan_body_pub_en = false;
 int lidar_type;
 
 int removed_points_counter = 0;
-std::map<uint16_t, int> global_label_count; 
+std::unordered_map<uint16_t, int> global_excluded_label_count;
 
 vector<vector<int>>  pointSearchInd_surf; 
 vector<BoxPointType> cub_needrm;
@@ -179,6 +180,8 @@ void pointBodyToWorld_ikfom(PointType const * const pi, PointType * const po, st
     po->y = p_global(1);
     po->z = p_global(2);
     po->intensity = pi->intensity;
+    po->label = pi->label;
+    po->rgb = pi->rgb;
 }
 
 
@@ -191,6 +194,8 @@ void pointBodyToWorld(PointType const * const pi, PointType * const po)
     po->y = p_global(1);
     po->z = p_global(2);
     po->intensity = pi->intensity;
+    po->label = pi->label;
+    po->rgb = pi->rgb;
 }
 
 template<typename T>
@@ -213,6 +218,8 @@ void RGBpointBodyToWorld(PointType const * const pi, PointType * const po)
     po->y = p_global(1);
     po->z = p_global(2);
     po->intensity = pi->intensity;
+    po->label = pi->label;
+    po->rgb = pi->rgb;
 }
 
 void RGBpointBodyLidarToIMU(PointType const * const pi, PointType * const po)
@@ -224,6 +231,8 @@ void RGBpointBodyLidarToIMU(PointType const * const pi, PointType * const po)
     po->y = p_body_imu(1);
     po->z = p_body_imu(2);
     po->intensity = pi->intensity;
+    po->label = pi->label;
+    po->rgb = pi->rgb;
 }
 
 void points_cache_collect()
@@ -440,7 +449,17 @@ void map_incremental()
     for (int i = 0; i < feats_down_size; i++)
     {
         /* transform to world frame */
+        //if (i < 10) { // Log only the first 10 points to avoid clutter
+            //ROS_INFO("feats_down_body - Label before transformation: %d", feats_down_body->points[i].label);
+        //}
+
+        // Transform the point
         pointBodyToWorld(&(feats_down_body->points[i]), &(feats_down_world->points[i]));
+
+        // Debug labels in feats_down_world after transformation
+        //if (i < 10) { // Log only the first 10 points
+            //ROS_INFO("feats_down_world - Label after transformation: %d", feats_down_world->points[i].label);
+        //}
         /* decide if need add to map */
         if (!Nearest_Points[i].empty() && flg_EKF_inited)
         {
@@ -472,6 +491,20 @@ void map_incremental()
             PointToAdd.push_back(feats_down_world->points[i]);
         }
     }
+
+    // Debug the labels of points in PointToAdd
+    //ROS_INFO("Debugging labels in PointToAdd:");
+    //for (const auto &point : PointToAdd)
+    //{
+        //ROS_INFO("PointToAdd - Label: %d", point.label);
+    //}
+
+    // Debug the labels of points in PointNoNeedDownsample
+    //ROS_INFO("Debugging labels in PointNoNeedDownsample:");
+    //for (const auto &point : PointNoNeedDownsample)
+    //{
+        //ROS_INFO("PointNoNeedDownsample - Label: %d", point.label);
+    //}
 
     double st_time = omp_get_wtime();
     add_point_size = ikdtree.Add_Points(PointToAdd, true);
@@ -680,36 +713,43 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
             /** Find the closest surfaces in the map **/
             ikdtree.Nearest_Search(point_world, NUM_MATCH_POINTS, points_near, pointSearchSqDis);
 
-            // Update the global label count map
-            for (const auto &point : points_near) {
-                global_label_count[point.label]++;
-            }
+            //ROS_INFO("Debugging labels of points retrieved by Nearest_Search:");
+            //for (const auto &point : points_near) {
+            //    ROS_INFO("Retrieved Point - Label: %d", point.label);
+            //}
 
             // Display the current global label counts
-            for (const auto &pair : global_label_count) {
-                uint16_t label = pair.first;
-                int count = pair.second;
-                ROS_INFO("Label %d: %d occurrences", label, count);
-            }
+            //for (const auto &pair : global_label_count) {
+            //    uint16_t label = pair.first;
+            //    int count = pair.second;
+            //    ROS_INFO("Label %d: %d occurrences", label, count);
+            //}
+            
 
             // Reset the removed points counter for this step
             int removed_in_this_step = 0;
 
-            // Exclude the points by their label
             points_near.erase(std::remove_if(points_near.begin(), points_near.end(),
                 [&](const PointType &p) {
                     if (excluded_labels.count(p.label) > 0) {
-                        removed_points_counter++;
-                        removed_in_this_step++;
+                        removed_points_counter++;  // Increment global counter
+                        removed_in_this_step++;   // Increment step counter
+                        global_excluded_label_count[p.label]++;  // Update global map
                         return true;
                     }
                     return false;
                 }),
                 points_near.end());
 
-            // Log the number of removed points in this step
-            ROS_INFO("Removed %d points in this step due to excluded labels", removed_in_this_step);
-            ROS_INFO("Total removed points so far: %d", removed_points_counter);
+            // Display global totals only if exclusions occurred in this step
+            if (removed_in_this_step > 0) {
+                ROS_INFO("Removed %d points in this step due to excluded labels", removed_in_this_step);
+
+                ROS_INFO("Total removed points so far (global):");
+                for (const auto &pair : global_excluded_label_count) {
+                    ROS_INFO("Label %d: %d total occurrences removed", pair.first, pair.second);
+                }
+            }
 
             point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : pointSearchSqDis[NUM_MATCH_POINTS - 1] > 5 ? false : true;
         }
@@ -794,7 +834,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         ekfom_data.h(i) = -norm_p.intensity;
     }
     solve_time += omp_get_wtime() - solve_start_;
-    ROS_INFO("Total removed points during plane fitting: %d", removed_points_counter);
+    //ROS_INFO("Total removed points during plane fitting: %d", removed_points_counter);
 }
 
 int main(int argc, char** argv)

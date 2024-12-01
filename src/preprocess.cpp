@@ -91,6 +91,7 @@ void Preprocess::process(const sensor_msgs::PointCloud2::ConstPtr &msg, PointClo
 
 void Preprocess::avia_handler(const livox_ros_driver::CustomMsg::ConstPtr &msg)
 {
+  ROS_INFO("avia_handler");
   pl_surf.clear();
   pl_corn.clear();
   pl_full.clear();
@@ -188,6 +189,7 @@ void Preprocess::avia_handler(const livox_ros_driver::CustomMsg::ConstPtr &msg)
 
 void Preprocess::oust64_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
 {
+  ROS_INFO("oust64_handler");
   pl_surf.clear();
   pl_corn.clear();
   pl_full.clear();
@@ -283,6 +285,7 @@ void Preprocess::oust64_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
 
 void Preprocess::velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
 {
+    //ROS_INFO("velodyne_handler");
     pl_surf.clear();
     pl_corn.clear();
     pl_full.clear();
@@ -343,9 +346,11 @@ void Preprocess::velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
         added_pt.z = pl_orig.points[i].z;
         added_pt.intensity = pl_orig.points[i].intensity;
         added_pt.curvature = pl_orig.points[i].time * time_unit_scale; // units: ms
-
+        
         added_pt.rgb = pl_orig.points[i].rgb;
         added_pt.label = pl_orig.points[i].label;
+
+        //ROS_INFO("Label: %u", added_pt.label);
 
         if (!given_offset_time)
         {
@@ -419,6 +424,8 @@ void Preprocess::velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
         added_pt.rgb = pl_orig.points[i].rgb;
         added_pt.label = pl_orig.points[i].label;
 
+        //ROS_INFO("Label: %u", added_pt.label);
+
         if (!given_offset_time)
         {
           int layer = pl_orig.points[i].ring;
@@ -463,6 +470,7 @@ void Preprocess::velodyne_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
 }
 
 void Preprocess::sim_handler(const sensor_msgs::PointCloud2::ConstPtr &msg) {
+    ROS_INFO("sim_handler");
     pl_surf.clear();
     pl_full.clear();
     pcl::PointCloud<pcl::PointXYZI> pl_orig;
@@ -489,6 +497,7 @@ void Preprocess::sim_handler(const sensor_msgs::PointCloud2::ConstPtr &msg) {
 
 void Preprocess::give_feature(pcl::PointCloud<PointType> &pl, vector<orgtype> &types)
 {
+  ROS_INFO("give_feature");
   int plsize = pl.size();
   int plsize2;
   if(plsize == 0)
@@ -767,6 +776,7 @@ void Preprocess::give_feature(pcl::PointCloud<PointType> &pl, vector<orgtype> &t
         ap.z = pl[j].z;
         ap.intensity = pl[j].intensity;
         ap.curvature = pl[j].curvature;
+
         pl_surf.push_back(ap);
 
         last_surface = -1;
@@ -812,6 +822,7 @@ void Preprocess::pub_func(PointCloudXYZI &pl, const ros::Time &ct)
 
 int Preprocess::plane_judge(const PointCloudXYZI &pl, vector<orgtype> &types, uint i_cur, uint &i_nex, Eigen::Vector3d &curr_direct)
 {
+  ROS_INFO("plane_judge");
   double group_dis = disA*types[i_cur].range + disB;
   group_dis = group_dis * group_dis;
   // i_nex = i_cur;
