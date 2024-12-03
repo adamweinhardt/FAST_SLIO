@@ -684,7 +684,8 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
 
     //--------------------------------------------------
     // excluding the following semantic labels:
-    std::unordered_set<uint16_t> excluded_labels = {252, 253, 254, 255, 256, 257, 258, 259};
+    //std::unordered_set<uint16_t> excluded_labels = {252, 253, 254, 255, 256, 257, 258, 259};
+    std::unordered_set<uint16_t> excluded_labels = {70};
 
     /** closest surface search and residual computation **/
     #ifdef MP_EN
