@@ -448,18 +448,9 @@ void map_incremental()
     PointNoNeedDownsample.reserve(feats_down_size);
     for (int i = 0; i < feats_down_size; i++)
     {
-        /* transform to world frame */
-        //if (i < 10) { // Log only the first 10 points to avoid clutter
-            //ROS_INFO("feats_down_body - Label before transformation: %d", feats_down_body->points[i].label);
-        //}
-
         // Transform the point
         pointBodyToWorld(&(feats_down_body->points[i]), &(feats_down_world->points[i]));
 
-        // Debug labels in feats_down_world after transformation
-        //if (i < 10) { // Log only the first 10 points
-            //ROS_INFO("feats_down_world - Label after transformation: %d", feats_down_world->points[i].label);
-        //}
         /* decide if need add to map */
         if (!Nearest_Points[i].empty() && flg_EKF_inited)
         {
@@ -491,20 +482,6 @@ void map_incremental()
             PointToAdd.push_back(feats_down_world->points[i]);
         }
     }
-
-    // Debug the labels of points in PointToAdd
-    //ROS_INFO("Debugging labels in PointToAdd:");
-    //for (const auto &point : PointToAdd)
-    //{
-        //ROS_INFO("PointToAdd - Label: %d", point.label);
-    //}
-
-    // Debug the labels of points in PointNoNeedDownsample
-    //ROS_INFO("Debugging labels in PointNoNeedDownsample:");
-    //for (const auto &point : PointNoNeedDownsample)
-    //{
-        //ROS_INFO("PointNoNeedDownsample - Label: %d", point.label);
-    //}
 
     double st_time = omp_get_wtime();
     add_point_size = ikdtree.Add_Points(PointToAdd, true);
@@ -682,11 +659,6 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
     corr_normvect->clear(); 
     total_residual = 0.0; 
 
-    //--------------------------------------------------
-    // excluding the following semantic labels:
-    //std::unordered_set<uint16_t> excluded_labels = {252, 253, 254, 255, 256, 257, 258, 259};
-    std::unordered_set<uint16_t> excluded_labels = {70};
-
     /** closest surface search and residual computation **/
     #ifdef MP_EN
         omp_set_num_threads(MP_PROC_NUM);
@@ -712,45 +684,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         if (ekfom_data.converge)
         {
             /** Find the closest surfaces in the map **/
-            ikdtree.Nearest_Search(point_world, NUM_MATCH_POINTS, points_near, pointSearchSqDis);
-
-            //ROS_INFO("Debugging labels of points retrieved by Nearest_Search:");
-            //for (const auto &point : points_near) {
-            //    ROS_INFO("Retrieved Point - Label: %d", point.label);
-            //}
-
-            // Display the current global label counts
-            //for (const auto &pair : global_label_count) {
-            //    uint16_t label = pair.first;
-            //    int count = pair.second;
-            //    ROS_INFO("Label %d: %d occurrences", label, count);
-            //}
-            
-
-            // Reset the removed points counter for this step
-            int removed_in_this_step = 0;
-
-            points_near.erase(std::remove_if(points_near.begin(), points_near.end(),
-                [&](const PointType &p) {
-                    if (excluded_labels.count(p.label) > 0) {
-                        removed_points_counter++;  // Increment global counter
-                        removed_in_this_step++;   // Increment step counter
-                        global_excluded_label_count[p.label]++;  // Update global map
-                        return true;
-                    }
-                    return false;
-                }),
-                points_near.end());
-
-            // Display global totals only if exclusions occurred in this step
-            if (removed_in_this_step > 0) {
-                ROS_INFO("Removed %d points in this step due to excluded labels", removed_in_this_step);
-
-                ROS_INFO("Total removed points so far (global):");
-                for (const auto &pair : global_excluded_label_count) {
-                    ROS_INFO("Label %d: %d total occurrences removed", pair.first, pair.second);
-                }
-            }
+            ikdtree.Nearest_Search(point_world, NUM_MATCH_POINTS, points_near, pointSearchSqDis);       
 
             point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : pointSearchSqDis[NUM_MATCH_POINTS - 1] > 5 ? false : true;
         }
@@ -835,7 +769,6 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         ekfom_data.h(i) = -norm_p.intensity;
     }
     solve_time += omp_get_wtime() - solve_start_;
-    //ROS_INFO("Total removed points during plane fitting: %d", removed_points_counter);
 }
 
 int main(int argc, char** argv)
