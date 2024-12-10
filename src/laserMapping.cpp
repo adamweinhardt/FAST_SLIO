@@ -684,7 +684,28 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         if (ekfom_data.converge)
         {
             /** Find the closest surfaces in the map **/
-            ikdtree.Nearest_Search(point_world, NUM_MATCH_POINTS, points_near, pointSearchSqDis);       
+            ikdtree.Nearest_Search(point_world, NUM_MATCH_POINTS, points_near, pointSearchSqDis);
+
+            // count the points by their labels
+            std::unordered_map<uint16_t, std::vector<PointType>> points_by_label;
+            for (const auto &point : points_near)
+            {
+                points_by_label[point.label].push_back(point);
+            }
+
+            
+            points_near.clear();
+            //filter the points by consistency
+            for (const auto &pair : points_by_label)
+            {
+                const auto &label = pair.first;
+                const auto &label_points = pair.second;
+
+                if (label_points.size() >= NUM_MATCH_LABEL_POINTS)
+                {
+                    points_near.insert(points_near.end(), label_points.begin(), label_points.end());
+                }
+            }      
 
             point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : pointSearchSqDis[NUM_MATCH_POINTS - 1] > 5 ? false : true;
         }
