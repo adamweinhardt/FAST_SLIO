@@ -686,51 +686,61 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
             /** Find the closest surfaces in the map **/
             ikdtree.Nearest_Search(point_world, NUM_MATCH_POINTS, points_near, pointSearchSqDis);
 
-            // count the points by their labels
+            // Group points by labels
             std::unordered_map<uint16_t, std::vector<PointType>> points_by_label;
             for (const auto &point : points_near)
             {
                 points_by_label[point.label].push_back(point);
             }
 
-            
-            points_near.clear();
-            //filter the points by consistency
+            point_selected_surf[i] = false; // Default to false until at least one valid plane is found
+
+            // Iterate over label groups and fit planes independently
             for (const auto &pair : points_by_label)
             {
                 const auto &label = pair.first;
-                const auto &label_points = pair.second;
+                const auto &label_points_std = pair.second;
+                if (label_points_std.size() >= NUM_MATCH_LABEL_POINTS)
+                {
+                    //ROS_INFO("Label %d has %lu points passing the threshold.", label, label_points_std.size());
+                }
 
+                // Convert std::vector to PointVector
+                PointVector label_points(label_points_std.begin(), label_points_std.end());
+
+                // Only process labels with sufficient points
                 if (label_points.size() >= NUM_MATCH_LABEL_POINTS)
                 {
-                    points_near.insert(points_near.end(), label_points.begin(), label_points.end());
-                }
-            }      
+                    VF(4) pabcd;
+                    if (esti_plane(pabcd, label_points, 0.1f))  // Fit a plane to this label group
+                    {
+                        //ROS_INFO("Plane coefficients: a=%f, b=%f, c=%f, d=%f", pabcd(0), pabcd(1), pabcd(2), pabcd(3));
+                        float pd2 = pabcd(0) * point_world.x + pabcd(1) * point_world.y + pabcd(2) * point_world.z + pabcd(3);
+                        //ROS_INFO("Residual pd2: %f", pd2);
+                        float s = 1 - 0.9 * fabs(pd2) / sqrt(p_body.norm());
 
-            point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : pointSearchSqDis[NUM_MATCH_POINTS - 1] > 5 ? false : true;
+                        if (s > 0.9)
+                        {
+                            point_selected_surf[i] = true;
+
+                            // Store the normal vector for this plane
+                            normvec->points[i].x = pabcd(0);
+                            normvec->points[i].y = pabcd(1);
+                            normvec->points[i].z = pabcd(2);
+                            normvec->points[i].intensity = pd2;
+                            res_last[i] = abs(pd2);
+
+                            // Break if a valid plane is found (optional, depends on use case)
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         if (!point_selected_surf[i]) continue;
-
-        VF(4) pabcd;
-        point_selected_surf[i] = false;
-        if (esti_plane(pabcd, points_near, 0.1f))
-        {
-            float pd2 = pabcd(0) * point_world.x + pabcd(1) * point_world.y + pabcd(2) * point_world.z + pabcd(3);
-            float s = 1 - 0.9 * fabs(pd2) / sqrt(p_body.norm());
-
-            if (s > 0.9)
-            {
-                point_selected_surf[i] = true;
-                normvec->points[i].x = pabcd(0);
-                normvec->points[i].y = pabcd(1);
-                normvec->points[i].z = pabcd(2);
-                normvec->points[i].intensity = pd2;
-                res_last[i] = abs(pd2);
-            }
-        }
     }
-    
+
     effct_feat_num = 0;
 
     for (int i = 0; i < feats_down_size; i++)
@@ -791,6 +801,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
     }
     solve_time += omp_get_wtime() - solve_start_;
 }
+
 
 int main(int argc, char** argv)
 {

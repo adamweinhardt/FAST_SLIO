@@ -26,7 +26,7 @@ using namespace Eigen;
 #define LIDAR_SP_LEN    (2)
 #define INIT_COV   (1)
 #define NUM_MATCH_POINTS    (10)
-#define NUM_MATCH_LABEL_POINTS (3)
+#define NUM_MATCH_LABEL_POINTS (5)
 #define MAX_MEAS_DIM        (10000)
 
 #define VEC_FROM_ARRAY(v)        v[0],v[1],v[2]
