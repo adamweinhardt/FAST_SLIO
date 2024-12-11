@@ -693,19 +693,20 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
                 points_by_label[point.label].push_back(point);
             }
 
-            
-            points_near.clear();
-            //filter the points by consistency
+            // find the label class with most points
+            uint16_t dominant_label = 0;
+            size_t max_label_points = 0;
             for (const auto &pair : points_by_label)
             {
-                const auto &label = pair.first;
-                const auto &label_points = pair.second;
-
-                if (label_points.size() >= NUM_MATCH_LABEL_POINTS)
+                if (pair.second.size() > max_label_points)
                 {
-                    points_near.insert(points_near.end(), label_points.begin(), label_points.end());
+                    max_label_points = pair.second.size();
+                    dominant_label = pair.first;
                 }
-            }      
+            }
+
+            // use the points only from the dominant label class
+            points_near.assign(points_by_label[dominant_label].begin(), points_by_label[dominant_label].end());
 
             point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : pointSearchSqDis[NUM_MATCH_POINTS - 1] > 5 ? false : true;
         }
@@ -730,7 +731,6 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
             }
         }
     }
-    
     effct_feat_num = 0;
 
     for (int i = 0; i < feats_down_size; i++)
