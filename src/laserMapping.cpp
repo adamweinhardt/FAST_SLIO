@@ -686,14 +686,14 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
             /** Find the closest surfaces in the map **/
             ikdtree.Nearest_Search(point_world, NUM_MATCH_POINTS, points_near, pointSearchSqDis);
 
-            // count the points by their labels
-            std::unordered_map<uint16_t, std::vector<PointType>> points_by_label;
-            for (const auto &point : points_near)
+            // count points by their label
+            std::unordered_map<uint16_t, std::vector<std::pair<PointType, float>>> points_by_label;
+            for (size_t j = 0; j < points_near.size(); ++j)
             {
-                points_by_label[point.label].push_back(point);
+                points_by_label[points_near[j].label].emplace_back(points_near[j], pointSearchSqDis[j]);
             }
 
-            // find the label class with most points
+            // fint the dominant class by the label
             uint16_t dominant_label = 0;
             size_t max_label_points = 0;
             for (const auto &pair : points_by_label)
@@ -705,10 +705,22 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
                 }
             }
 
-            // use the points only from the dominant label class
-            points_near.assign(points_by_label[dominant_label].begin(), points_by_label[dominant_label].end());
+            points_near.clear();
+            std::vector<float> filtered_pointSearchSqDis;
+            for (const auto &point_dist_pair : points_by_label[dominant_label])
+            {
+                points_near.push_back(point_dist_pair.first);
+                filtered_pointSearchSqDis.push_back(point_dist_pair.second);
+            }
 
-            point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : pointSearchSqDis[NUM_MATCH_POINTS - 1] > 5 ? false : true;
+            pointSearchSqDis = std::move(filtered_pointSearchSqDis);
+
+            //min number to fit a plane is 3
+            point_selected_surf[i] = pointSearchSqDis.size() < 3
+                                    ? false
+                                    : pointSearchSqDis[pointSearchSqDis.size() - 1] > 5
+                                    ? false
+                                    : true;
         }
 
         if (!point_selected_surf[i]) continue;
