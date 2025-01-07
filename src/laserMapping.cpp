@@ -671,7 +671,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
 
         /* transform to world frame */
         V3D p_body(point_body.x, point_body.y, point_body.z);
-        V3D p_global(s.rot * (s.offset_R_L_I*p_body + s.offset_T_L_I) + s.pos);
+        V3D p_global(s.rot * (s.offset_R_L_I * p_body + s.offset_T_L_I) + s.pos);
         point_world.x = p_global(0);
         point_world.y = p_global(1);
         point_world.z = p_global(2);
@@ -686,61 +686,52 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
             /** Find the closest surfaces in the map **/
             ikdtree.Nearest_Search(point_world, NUM_MATCH_POINTS, points_near, pointSearchSqDis);
 
-            // Group points by labels
-            std::unordered_map<uint16_t, std::vector<PointType>> points_by_label;
-            for (const auto &point : points_near)
+            //original label of the query point
+            uint16_t original_label = point_world.label;
+
+            //filter points by the original label
+            std::vector<PointType> filtered_points_near;
+            std::vector<float> filtered_pointSearchSqDis;
+            for (size_t j = 0; j < points_near.size(); ++j)
             {
-                points_by_label[point.label].push_back(point);
-            }
-
-            point_selected_surf[i] = false; // Default to false until at least one valid plane is found
-
-            // Iterate over label groups and fit planes independently
-            for (const auto &pair : points_by_label)
-            {
-                const auto &label = pair.first;
-                const auto &label_points_std = pair.second;
-                if (label_points_std.size() >= NUM_MATCH_LABEL_POINTS)
+                if (points_near[j].label == original_label)
                 {
-                    //ROS_INFO("Label %d has %lu points passing the threshold.", label, label_points_std.size());
-                }
-
-                // Convert std::vector to PointVector
-                PointVector label_points(label_points_std.begin(), label_points_std.end());
-
-                // Only process labels with sufficient points
-                if (label_points.size() >= NUM_MATCH_LABEL_POINTS)
-                {
-                    VF(4) pabcd;
-                    if (esti_plane(pabcd, label_points, 0.1f))  // Fit a plane to this label group
-                    {
-                        //ROS_INFO("Plane coefficients: a=%f, b=%f, c=%f, d=%f", pabcd(0), pabcd(1), pabcd(2), pabcd(3));
-                        float pd2 = pabcd(0) * point_world.x + pabcd(1) * point_world.y + pabcd(2) * point_world.z + pabcd(3);
-                        //ROS_INFO("Residual pd2: %f", pd2);
-                        float s = 1 - 0.9 * fabs(pd2) / sqrt(p_body.norm());
-
-                        if (s > 0.9)
-                        {
-                            point_selected_surf[i] = true;
-
-                            // Store the normal vector for this plane
-                            normvec->points[i].x = pabcd(0);
-                            normvec->points[i].y = pabcd(1);
-                            normvec->points[i].z = pabcd(2);
-                            normvec->points[i].intensity = pd2;
-                            res_last[i] = abs(pd2);
-
-                            // Break if a valid plane is found (optional, depends on use case)
-                            break;
-                        }
-                    }
+                    filtered_points_near.push_back(points_near[j]);
+                    filtered_pointSearchSqDis.push_back(pointSearchSqDis[j]);
                 }
             }
+
+            points_near = std::move(filtered_points_near);
+            pointSearchSqDis = std::move(filtered_pointSearchSqDis);
+
+            //min number to fit a plane is 3
+            point_selected_surf[i] = pointSearchSqDis.size() < 3
+                                    ? false
+                                    : pointSearchSqDis[pointSearchSqDis.size() - 1] > 5
+                                    ? false
+                                    : true;
         }
 
         if (!point_selected_surf[i]) continue;
-    }
 
+        VF(4) pabcd;
+        point_selected_surf[i] = false;
+        if (esti_plane(pabcd, points_near, 0.1f))
+        {
+            float pd2 = pabcd(0) * point_world.x + pabcd(1) * point_world.y + pabcd(2) * point_world.z + pabcd(3);
+            float s = 1 - 0.9 * fabs(pd2) / sqrt(p_body.norm());
+
+            if (s > 0.9)
+            {
+                point_selected_surf[i] = true;
+                normvec->points[i].x = pabcd(0);
+                normvec->points[i].y = pabcd(1);
+                normvec->points[i].z = pabcd(2);
+                normvec->points[i].intensity = pd2;
+                res_last[i] = abs(pd2);
+            }
+        }
+    }
     effct_feat_num = 0;
 
     for (int i = 0; i < feats_down_size; i++)
@@ -750,7 +741,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
             laserCloudOri->points[effct_feat_num] = feats_down_body->points[i];
             corr_normvect->points[effct_feat_num] = normvec->points[i];
             total_residual += res_last[i];
-            effct_feat_num ++;
+            effct_feat_num++;
         }
     }
 
@@ -765,7 +756,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
     match_time  += omp_get_wtime() - match_start;
     double solve_start_  = omp_get_wtime();
     
-    /*** Computation of Measuremnt Jacobian matrix H and measurents vector ***/
+    /*** Computation of Measurement Jacobian matrix H and measurements vector ***/
     ekfom_data.h_x = MatrixXd::Zero(effct_feat_num, 12); //23
     ekfom_data.h.resize(effct_feat_num);
 
@@ -777,18 +768,18 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
         point_be_crossmat << SKEW_SYM_MATRX(point_this_be);
         V3D point_this = s.offset_R_L_I * point_this_be + s.offset_T_L_I;
         M3D point_crossmat;
-        point_crossmat<<SKEW_SYM_MATRX(point_this);
+        point_crossmat << SKEW_SYM_MATRX(point_this);
 
-        /*** get the normal vector of closest surface/corner ***/
+        /*** Get the normal vector of the closest surface/corner ***/
         const PointType &norm_p = corr_normvect->points[i];
         V3D norm_vec(norm_p.x, norm_p.y, norm_p.z);
 
-        /*** calculate the Measuremnt Jacobian matrix H ***/
-        V3D C(s.rot.conjugate() *norm_vec);
+        /*** Calculate the Measurement Jacobian matrix H ***/
+        V3D C(s.rot.conjugate() * norm_vec);
         V3D A(point_crossmat * C);
         if (extrinsic_est_en)
         {
-            V3D B(point_be_crossmat * s.offset_R_L_I.conjugate() * C); //s.rot.conjugate()*norm_vec);
+            V3D B(point_be_crossmat * s.offset_R_L_I.conjugate() * C); 
             ekfom_data.h_x.block<1, 12>(i,0) << norm_p.x, norm_p.y, norm_p.z, VEC_FROM_ARRAY(A), VEC_FROM_ARRAY(B), VEC_FROM_ARRAY(C);
         }
         else
@@ -796,7 +787,7 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
             ekfom_data.h_x.block<1, 12>(i,0) << norm_p.x, norm_p.y, norm_p.z, VEC_FROM_ARRAY(A), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
         }
 
-        /*** Measuremnt: distance to the closest surface/corner ***/
+        /*** Measurement: distance to the closest surface/corner ***/
         ekfom_data.h(i) = -norm_p.intensity;
     }
     solve_time += omp_get_wtime() - solve_start_;
