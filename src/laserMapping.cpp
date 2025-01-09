@@ -701,8 +701,12 @@ void h_share_model(state_ikfom &s, esekfom::dyn_share_datastruct<double> &ekfom_
                 }
             }
 
-            points_near = std::move(filtered_points_near);
+            // Assign filtered points and distances
+            points_near.clear();
+            points_near.insert(points_near.end(), filtered_points_near.begin(), filtered_points_near.end());
+
             pointSearchSqDis = std::move(filtered_pointSearchSqDis);
+
 
             //min number to fit a plane is 3
             point_selected_surf[i] = pointSearchSqDis.size() < 3
